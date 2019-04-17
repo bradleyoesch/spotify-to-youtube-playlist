@@ -30,7 +30,7 @@ Once you have created your apps, copy the secrets file to an actual secrets file
 
     $ cp src/secrets.js.bak src/secrets.js
 
-## Running the examples
+## Running the code
 Run via node with some arguments.
 Find the url by going to a Spotify playlist > Three dots > Share > Copy Playlist Link.
 Give a limit if you want. It has a low default for testing purposes.
