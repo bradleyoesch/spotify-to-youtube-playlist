@@ -1,6 +1,6 @@
 const rp = require('request-promise');
 const Secrets = require('./secrets');
-const { State } = require('./state');
+const Args = require('./args');
 const __ = require('./lodashes');
 const { Spotify } = Secrets;
 
@@ -48,15 +48,16 @@ function authenticate() {
       return response.access_token
     })
     .catch((e) => {
-      console.log('authenticate() error\n', e)
+      console.error('authenticate() error\n', e)
     });
 }
 
 function getPlaylistTracks(token, playlistId) {
+  const args = Args.get();
   // TODO: offset changes per call
   const urlParams = {
-    limit: State.args.limit,
-    offset: State.args.offset,
+    limit: args.limit,
+    offset: args.offset,
     fields: 'items(track(name, artists))'
   };
   const opts = Object.assign({}, Options.PLAYLIST);
@@ -67,7 +68,7 @@ function getPlaylistTracks(token, playlistId) {
       return response.items.map((item) => item.track);
     })
     .catch((e) => {
-      console.log('getPlaylistTracks() error\n', e)
+      console.error('getPlaylistTracks() error\n', e)
     });
 }
 

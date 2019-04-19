@@ -1,11 +1,11 @@
 const rp = require('request-promise');
 const __ = require('./lodashes');
 const Secrets = require('./secrets');
-const { State } = require('./state');
+const Score = require('./score');
+const Args = require('./args');
 const { Youtube } = Secrets;
 
 const RESULT_LIMIT = 3;
-const MIN_SCORE = 0;
 const Urls = {
   BASE_SEARCH: 'https://www.googleapis.com/youtube/v3/search?part=snippet'
 };
@@ -27,15 +27,14 @@ function _searchVideos(query) {
   const videoSearchOpts = _getOptions(params);
   return rp(videoSearchOpts)
     .catch((e) => {
-      console.log('_searchVideos() error\n', e)
+      console.error('_searchVideos() error\n', e)
     });
 }
 
-/* consider match if:
- * - title contains artist, title and "music video"
- * - if over 100,000 views, probably the right one
- * - if vevo or other official music video channel, probably right onw
- * - seems to be a flag on yt for "artist official channel" that's another good check
+/*
+ * Honestly this is all probably just a waste of time, in what world
+ * is <artist> - <song> official music video not gonna return the
+ * correct video in the first result?
  */
 // TODO: try this
 // function _toBestVideo(obj) {
@@ -43,51 +42,43 @@ function _searchVideos(query) {
 //     ...
 //   }
 // }
-const _toBestVideo = (obj) => (acc, curr, idx, arr) => {
+const _toBestVideo = (queryObj) => (acc, curr, idx, arr) => {
   try {
-    // favor the order of items
-    var score = idx * -1 + arr.length;
-    var id = curr.id.videoId;
-    var title = curr.snippet.title;
+    const id = curr.id.videoId;
+    const title = curr.snippet.title;
     if (curr.id.kind !== 'youtube#video') {
       return acc;
     }
-    var channel = curr.snippet.channelTitle;
-    // TODO: better method, probably something with an object?
-    const scoreMult = Math.floor(arr.length / 2);
-    score += __.includesIgnoreCase(title, obj.title) ? scoreMult : 0;
-    score += __.includesIgnoreCase(title, obj.artists[0]) ? scoreMult : 0;
-    score += __.includesIgnoreCase(channel, obj.artists[0]) ? scoreMult : 0;
-    score += __.equalsIgnoreCase(channel, obj.artists[0]) ? scoreMult * 3 : 0;
-    score += __.includesIgnoreCase(channel, 'vevo') ? scoreMult * 3 : 0;
-    score *= __.includesIgnoreCase(title, 'lyrics') ? 0 : 1;
-    score *= __.includesIgnoreCase(title, 'high quality') ? 0 : 1;
-    score *= __.includesIgnoreCase(title, 'album version') ? 0 : 1;
+    const channel = curr.snippet.channelTitle;
+    const rawScore = Score.calculate({ title, channel }, queryObj);
+    if (rawScore < Score.MIN) {
+      return acc;
+    }
+    // favor the order of items
+    const idxBoost = idx * -1 + arr.length;
+    const score = rawScore * idxBoost;
+    return (score > acc.score) ? { id, title, score } : acc;
   } catch (err) {
     console.error('Error while calculating score for item: ' + JSON.stringify(curr), err);
     return acc;
   }
-  return (score > acc.score) ? { id, title, score } : acc;
 }
 
-async function _doChunkedSearchVideos(chunk) {
-  const chunkedSearches = chunk.map((queryObj, idx) => {
-    const query = queryObj.query;
-
+async function _doChunkedSearchVideos(queryObjChunk) {
+  const debug = Args.get().debug;
+  const bestVideos = queryObjChunk.map((queryObj, idx) => {
     // TODO: cache the query
-    return _searchVideos(query)
+    return _searchVideos(queryObj.query)
       .then((response) => {
-        const condensed = response.items.map((item) => { return { id: item.id.videoId, title: item.snippet.title, channel: item.snippet.channelTitle }; });
-        // console.log('condensed');
-        // console.log(condensed);
-        const best = response.items.reduce(_toBestVideo(queryObj), { score: 0 });
-        return best.score > MIN_SCORE ? best : null;
+        const condensed = debug ? response.items.map((item) => { return { id: item.id.videoId, title: item.snippet.title, channel: item.snippet.channelTitle }; }) : null;
+        debug && console.log('condensed', condensed);
+        return response.items.reduce(_toBestVideo(queryObj), { score: 0 });
       })
       .catch((e) => {
-        console.log('_doChunkedSearchVideos() error\n', e)
+        console.error('_doChunkedSearchVideos() error\n', e)
       });
   });
-  return Promise.all(chunkedSearches);
+  return Promise.all(bestVideos);
 }
 
 function toQueryObject(track) {
@@ -100,6 +91,7 @@ function toQueryObject(track) {
 
 // TODO: could maybe use then returns with ids to possibly return it through just the thens, no separate array
 function getBestIdsFromQueryChunks(queryChunks) {
+  const debug = Args.get().debug;
   const ids = [];
 
   const reducedSearches = queryChunks.reduce(async (previousSearch, nextChunk) => {
@@ -107,7 +99,8 @@ function getBestIdsFromQueryChunks(queryChunks) {
     return _doChunkedSearchVideos(nextChunk)
       .then((allResponses) => {
         // TODO: cache the query
-        const responseIds = allResponses.filter(Boolean).map((response) => response.id)
+        debug && console.log('allResponses', allResponses)
+        const responseIds = allResponses.filter((response) => response.score > 0).map((response) => response.id)
         ids.push.apply(ids, responseIds);
       });
   }, Promise.resolve());
@@ -117,7 +110,7 @@ function getBestIdsFromQueryChunks(queryChunks) {
       return ids;
     })
     .catch((e) => {
-      console.log('getBestIdsFromQueryChunks() error\n', e)
+      console.error('getBestIdsFromQueryChunks() error\n', e)
     });
 }
 
