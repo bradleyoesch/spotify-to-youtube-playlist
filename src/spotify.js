@@ -1,12 +1,17 @@
 const rp = require('request-promise');
 const Secrets = require('./secrets');
+const { State } = require('./state');
+const __ = require('./lodashes');
 const { Spotify } = Secrets;
 
 // your application requests authorization
 // const BASIC_AUTH = Buffer.from(`${Spotify.CLIENT_ID}:${Spotify.CLIENT_SECRET}`, 'base64');
 const BASIC_AUTH = new Buffer(`${Spotify.CLIENT_ID}:${Spotify.CLIENT_SECRET}`).toString('base64');
+const Regex = {
+  PLAYLIST_ID: /<playlistId>/gi
+}
 const Urls = {
-  BASE_PLAYLIST: 'https://api.spotify.com/v1/playlists/'
+  GET_PLAYLIST_TRACKS: 'https://api.spotify.com/v1/playlists/<playlistId>/tracks'
 };
 const Options = {
   AUTH:{
@@ -19,7 +24,7 @@ const Options = {
   PLAYLIST: {
     // url: 'https://api.spotify.com/v1/users/1258023236/playlists',
     method: 'GET',
-    url: Urls.BASE_PLAYLIST,
+    url: Urls.GET_PLAYLIST_TRACKS,
     headers: { 'Authorization': 'Invalid token' },
     json: true
   }
@@ -39,32 +44,43 @@ function getPlaylistIdFromUrl(url) {
 
 function authenticate() {
   return rp(Options.AUTH)
+    .then((response) => {
+      return response.access_token
+    })
     .catch((e) => {
       console.log('authenticate() error\n', e)
     });
 }
 
-function getPlaylistBasicTrackInfo(token, playlistId) {
+function getPlaylistTracks(token, playlistId) {
+  // TODO: offset changes per call
+  const urlParams = {
+    limit: State.args.limit,
+    offset: State.args.offset,
+    fields: 'items(track(name, artists))'
+  };
   const opts = Object.assign({}, Options.PLAYLIST);
   opts.headers.Authorization = `Bearer ${token}`;
-  opts.url = `${opts.url}${playlistId}`;
-  // opts.fields='tracks.items(track(name, artists))';
+  opts.url = __.appendParamsToURL(opts.url.replace(Regex.PLAYLIST_ID, playlistId), urlParams);
   return rp(opts)
+    .then((response) => {
+      return response.items.map((item) => item.track);
+    })
     .catch((e) => {
-      console.log('getPlaylistBasicTrackInfo() error\n', e)
+      console.log('getPlaylistTracks() error\n', e)
     });
 }
 
-function toSummarizedTrack(track) {
+function toBasicTrack(track) {
   return {
-    title: track.track.name,
-    artists: track.track.artists.map((artist) => artist.name)
+    title: track.name,
+    artists: track.artists.map((artist) => artist.name)
   }
 }
 
 module.exports = {
   getPlaylistIdFromUrl,
   authenticate,
-  getPlaylistBasicTrackInfo,
-  toSummarizedTrack
+  getPlaylistTracks,
+  toBasicTrack
 };

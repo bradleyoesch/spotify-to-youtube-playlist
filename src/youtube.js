@@ -1,9 +1,11 @@
 const rp = require('request-promise');
 const __ = require('./lodashes');
 const Secrets = require('./secrets');
+const { State } = require('./state');
 const { Youtube } = Secrets;
 
 const RESULT_LIMIT = 3;
+const MIN_SCORE = 0;
 const Urls = {
   BASE_SEARCH: 'https://www.googleapis.com/youtube/v3/search?part=snippet'
 };
@@ -21,7 +23,7 @@ function _getOptions(params) {
 }
 
 function _searchVideos(query) {
-  const params = `&maxResults=${RESULT_LIMIT}&q=${query}`;
+  const params = `&type=video&maxResults=${RESULT_LIMIT}&q=${query}`;
   const videoSearchOpts = _getOptions(params);
   return rp(videoSearchOpts)
     .catch((e) => {
@@ -56,6 +58,8 @@ const _toBestVideo = (obj) => (acc, curr, idx, arr) => {
     score += __.includesIgnoreCase(title, obj.title) ? scoreMult : 0;
     score += __.includesIgnoreCase(title, obj.artists[0]) ? scoreMult : 0;
     score += __.includesIgnoreCase(channel, obj.artists[0]) ? scoreMult : 0;
+    score += __.equalsIgnoreCase(channel, obj.artists[0]) ? scoreMult * 3 : 0;
+    score += __.includesIgnoreCase(channel, 'vevo') ? scoreMult * 3 : 0;
     score *= __.includesIgnoreCase(title, 'lyrics') ? 0 : 1;
     score *= __.includesIgnoreCase(title, 'high quality') ? 0 : 1;
     score *= __.includesIgnoreCase(title, 'album version') ? 0 : 1;
@@ -70,10 +74,14 @@ async function _doChunkedSearchVideos(chunk) {
   const chunkedSearches = chunk.map((queryObj, idx) => {
     const query = queryObj.query;
 
+    // TODO: cache the query
     return _searchVideos(query)
       .then((response) => {
+        const condensed = response.items.map((item) => { return { id: item.id.videoId, title: item.snippet.title, channel: item.snippet.channelTitle }; });
+        // console.log('condensed');
+        // console.log(condensed);
         const best = response.items.reduce(_toBestVideo(queryObj), { score: 0 });
-        return best.score > 0 ? best : null;
+        return best.score > MIN_SCORE ? best : null;
       })
       .catch((e) => {
         console.log('_doChunkedSearchVideos() error\n', e)
@@ -98,6 +106,7 @@ function getBestIdsFromQueryChunks(queryChunks) {
     await previousSearch;
     return _doChunkedSearchVideos(nextChunk)
       .then((allResponses) => {
+        // TODO: cache the query
         const responseIds = allResponses.filter(Boolean).map((response) => response.id)
         ids.push.apply(ids, responseIds);
       });

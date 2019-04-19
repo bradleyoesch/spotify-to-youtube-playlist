@@ -1,5 +1,6 @@
 const rp = require('request-promise');
 const __ = require('./lodashes');
+const { State, setArgs } = require('./state');
 const Spotify = require('./spotify');
 const Youtube = require('./youtube');
 
@@ -26,37 +27,38 @@ function parseArgs() {
 }
 
 const args = parseArgs();
+// TODO move to args?
 const playlistUrl = args.url;
 if (!playlistUrl) {
   throw 'Playlist url is required!';
 }
-const limit = args.limit || 5;
-const chunkSize = args.chunk || 5;
+setArgs(args);
 const playlistId = Spotify.getPlaylistIdFromUrl(playlistUrl);
 if (!playlistId) {
   throw 'Could not get id from playlist url';
 }
 
 Spotify.authenticate()
-  .then((response) => {
-    const token = response.access_token;
+  .then((token) => {
 
-    Spotify.getPlaylistBasicTrackInfo(token, playlistId)
-      .then((playlistResponse) => {
+    Spotify.getPlaylistTracks(token, playlistId)
+      .then((tracks) => {
 
-        const tracks = playlistResponse.tracks.items.slice(0, limit).map(Spotify.toSummarizedTrack);
-        const ytQueryObjects = tracks.map(Youtube.toQueryObject);
-        const ytQueryChunks = __.chunk(ytQueryObjects, chunkSize);
-
+        const basicTracks = tracks.map(Spotify.toBasicTrack);
+        const ytQueryObjects = basicTracks.map(Youtube.toQueryObject);
+        const ytQueryChunks = __.chunk(ytQueryObjects, State.args.chunkSize);
+        // console.log(ytQueryChunks);
         // TODO: should probably implement shitty caching first
         // probably just write to file with json parsing
         // { spotifyId, ytId }
 
-        Youtube.getBestIdsFromQueryChunks(ytQueryChunks)
-          .then((bestYtIds) => {
-            console.log('bestYtIds');
-            console.log(bestYtIds);
-          })
+        if (!State.args.skipYoutube) {
+          Youtube.getBestIdsFromQueryChunks(ytQueryChunks)
+            .then((bestYtIds) => {
+              console.log('bestYtIds');
+              console.log(bestYtIds);
+            })
+        }
       })
       .catch((playlistErr) => {
         console.log('playlistErr');
