@@ -7,12 +7,12 @@ const Youtube = require('./youtube');
 Args.set();
 const args = Args.get();
 
-const playlistId = Spotify.getPlaylistIdFromUrl(args.url);
+const playlistId = args.id ? args.id : Spotify.getPlaylistIdFromUrl(args.url);
 if (!playlistId) {
   throw 'Could not get id from playlist url';
 }
 
-!args.skipAll && Spotify.authenticate()
+!args.skipApi && Spotify.authenticate()
   .then((token) => {
 
     Spotify.getPlaylistTracks(token, playlistId)
