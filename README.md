@@ -45,7 +45,7 @@ Arg | Default | Purpose
 --id | None, url or id is required | Or just pass in the playlist id directly
 --chunkSize | 5 | Chunk your Youtube requests so you don't make tons of calls at once
 --limit | 5 | Limits the number of tracks returned by Spotify, low for testing purposes
---offest | 0 | Offsets the track start returned by Spotify, mainly for testing purposes
+--offset | 0 | Offsets the track start returned by Spotify, mainly for testing purposes
 -debug | False | Log more things in the console with this flag on
 -skipApi | False | Skip all the api calls, probably to play around with the args
 -skipYoutube | False | Skips Youtube api calls, since their quota limit is pathetically low
