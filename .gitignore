@@ -1,4 +1,5 @@
 .DS_Store
 node_modules/*
 src/secrets.js
-
+src/resources/cache/*
+!src/resources/cache/cache.json

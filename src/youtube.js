@@ -3,6 +3,7 @@ const __ = require('./lodashes');
 const Secrets = require('./secrets');
 const Score = require('./score');
 const Args = require('./args');
+const Cache = require('./cache');
 const { Youtube } = Secrets;
 
 const RESULT_LIMIT = 3;
@@ -25,7 +26,16 @@ function _getOptions(params) {
 function _searchVideos(query) {
   const params = `&type=video&maxResults=${RESULT_LIMIT}&q=${query}`;
   const videoSearchOpts = _getOptions(params);
+  const hit = Cache.get(['youtube', 'search', 'video', query]);
+  if (hit) {
+    Args.get().debug && console.log(`Hit on query: ${query}`);
+    return Promise.resolve().then(() => hit);
+  }
   return rp(videoSearchOpts)
+    .then((response) => {
+      Cache.set(['youtube', 'search', 'video', query], response);
+      return response;
+    })
     .catch((e) => {
       console.error('_searchVideos() error\n', e)
     });
@@ -82,10 +92,12 @@ async function _doChunkedSearchVideos(queryObjChunk) {
 }
 
 function toQueryObject(track) {
+  const title = track.title.trim().toLowerCase();
+  const artists = track.artists.map((a) => a.trim().toLowerCase());
   return {
-    title: track.title,
-    artists: track.artists.slice(),
-    query: `${track.artists.join(' ')} - ${track.title} official music video`
+    title,
+    artists,
+    query: `${artists.join(' ')} - ${title} official music video`
   };
 }
 

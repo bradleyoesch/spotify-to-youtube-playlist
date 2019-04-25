@@ -3,6 +3,7 @@ const __ = require('./lodashes');
 const Args = require('./args');
 const Spotify = require('./spotify');
 const Youtube = require('./youtube');
+const Cache = require('./cache');
 
 Args.set();
 const args = Args.get();
@@ -11,6 +12,8 @@ const playlistId = args.id ? args.id : Spotify.getPlaylistIdFromUrl(args.url);
 if (!playlistId) {
   throw 'Could not get id from playlist url';
 }
+
+Cache.load();
 
 !args.skipApi && Spotify.authenticate()
   .then((token) => {
@@ -30,6 +33,7 @@ if (!playlistId) {
             .then((bestYtIds) => {
               console.log('bestYtIds');
               console.log(bestYtIds);
+              Cache.write();
             })
         }
       })
@@ -38,4 +42,3 @@ if (!playlistId) {
         console.log(playlistErr);
       });
   });
-

@@ -39,7 +39,7 @@ function calculate(youtubeResult, queryObj) {
     return acc + curr(youtubeResult, queryObj);
   }, 0);
 
-  if (Args.get().debug) {
+  if (Args.get().debugScore) {
     console.log('youtubeResult');
     console.log(youtubeResult);
     console.log('queryObj');
