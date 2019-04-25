@@ -1,21 +1,23 @@
 const fs = require('fs');
 const Args = require('./args');
 
+const filepath = './src/resources/cache/';
+const cacheNames = [ 'youtube', 'spotify' ];
 const _CACHE = {};
 
 function load() {
   // TODO: what if no files?
-  const raw = {
-    youtube: fs.readFileSync("./cache/youtube.json").toString() || '{}',
-    spotify: fs.readFileSync("./cache/spotify.json").toString() || '{}'
-  }
-  Object.keys(raw).forEach((key) => _CACHE[key] = JSON.parse(raw[key]));
+  cacheNames.forEach((name) => {
+    const cache = fs.readFileSync(`${filepath}${name}.json`).toString() || '{}';
+    _CACHE[name] = JSON.parse(cache);
+  });
 }
 
 function write() {
   // TODO: what if no files?
-  fs.writeFileSync("./cache/youtube.json", JSON.stringify(_CACHE.youtube || {}));
-  fs.writeFileSync("./cache/spotify.json", JSON.stringify(_CACHE.spotify || {}));
+  cacheNames.forEach((name) => {
+    fs.writeFileSync(`${filepath}${name}.json`, JSON.stringify(_CACHE[name] || {}));
+  });
 }
 
 function get(path) {
