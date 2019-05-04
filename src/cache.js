@@ -20,12 +20,12 @@ function write() {
   });
 }
 
-function get(path) {
+function getIn(path, defaultValue = null) {
   const value = path.reduce((acc, curr) => acc[curr] ? acc[curr] : {}, _CACHE);
-  return (value.length || Object.keys(value).length) ? value : null;
+  return (value.length || Object.keys(value).length) ? value : defaultValue;
 }
 
-function set(path, value) {
+function setIn(path, value) {
   if (!value.length && !Object.keys(value).length) {
     return;
   }
@@ -56,7 +56,7 @@ function print() {
 module.exports = {
   load,
   write,
-  get,
-  set,
+  getIn,
+  setIn,
   print
 };
