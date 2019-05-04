@@ -1,7 +1,7 @@
 const rp = require('request-promise');
 const Secrets = require('./secrets');
 const Args = require('./args');
-const __ = require('./lodashes');
+const Common = require('./common');
 const { Spotify } = Secrets;
 
 // your application requests authorization
@@ -62,7 +62,7 @@ function getPlaylistTracks(token, playlistId) {
   };
   const opts = Object.assign({}, Options.PLAYLIST);
   opts.headers.Authorization = `Bearer ${token}`;
-  opts.url = __.appendParamsToURL(opts.url.replace(Regex.PLAYLIST_ID, playlistId), urlParams);
+  opts.url = Common.appendParamsToURL(opts.url.replace(Regex.PLAYLIST_ID, playlistId), urlParams);
   return rp(opts)
     .then((response) => {
       return response.items.map((item) => item.track);

@@ -1,5 +1,6 @@
 const rp = require('request-promise');
-const __ = require('./lodashes');
+const _ = require('lodash');
+const Common = require('./common');
 const Secrets = require('./secrets');
 const Score = require('./score');
 const Args = require('./args');
@@ -26,14 +27,14 @@ function _getOptions(params) {
 function _searchVideos(query) {
   const params = `&type=video&maxResults=${RESULT_LIMIT}&q=${query}`;
   const videoSearchOpts = _getOptions(params);
-  const hit = Cache.get(['youtube', 'search', 'video', query]);
+  const hit = Cache.getIn(['youtube', 'search', 'video', query]);
   if (hit) {
     Args.get().debug && console.log(`Hit on query: ${query}`);
-    return Promise.resolve().then(() => hit);
+    return Promise.resolve(hit);
   }
   return rp(videoSearchOpts)
     .then((response) => {
-      Cache.set(['youtube', 'search', 'video', query], response);
+      Cache.setIn(['youtube', 'search', 'video', query], response);
       return response;
     })
     .catch((e) => {
@@ -55,18 +56,21 @@ function _searchVideos(query) {
 const _toBestVideo = (queryObj) => (acc, curr, idx, arr) => {
   try {
     const id = curr.id.videoId;
-    const title = curr.snippet.title;
+    const title = Common.stripSpecialChars(_.unescape(curr.snippet.title));
     if (curr.id.kind !== 'youtube#video') {
       return acc;
     }
-    const channel = curr.snippet.channelTitle;
+    const channel = Common.stripSpecialChars(curr.snippet.channelTitle);
     const rawScore = Score.calculate({ title, channel }, queryObj);
+
     if (rawScore < Score.MIN) {
+      Args.get().debugScore && console.log(rawScore + ': ' + [id, title.toLowerCase(), channel.toLowerCase()].join(' | '));
       return acc;
     }
     // favor the order of items
     const idxBoost = idx * -1 + arr.length;
     const score = rawScore * idxBoost;
+    Args.get().debugScore && console.log(score + ': ' + [id, title.toLowerCase(), channel.toLowerCase()].join(' | '));
     return (score > acc.score) ? { id, title, score } : acc;
   } catch (err) {
     console.error('Error while calculating score for item: ' + JSON.stringify(curr), err);
@@ -82,6 +86,7 @@ async function _doChunkedSearchVideos(queryObjChunk) {
       .then((response) => {
         const condensed = debug ? response.items.map((item) => { return { id: item.id.videoId, title: item.snippet.title, channel: item.snippet.channelTitle }; }) : null;
         debug && console.log('condensed', condensed);
+        Args.get().debugScore && console.log('\n' + queryObj.query);
         return response.items.reduce(_toBestVideo(queryObj), { score: 0 });
       })
       .catch((e) => {
@@ -92,8 +97,8 @@ async function _doChunkedSearchVideos(queryObjChunk) {
 }
 
 function toQueryObject(track) {
-  const title = track.title.trim().toLowerCase();
-  const artists = track.artists.map((a) => a.trim().toLowerCase());
+  const title = Common.stripSpecialChars(track.title.trim().toLowerCase());
+  const artists = track.artists.map((a) => Common.stripSpecialChars(a.trim().toLowerCase()));
   return {
     title,
     artists,

@@ -1,5 +1,5 @@
 const rp = require('request-promise');
-const __ = require('./lodashes');
+const _ = require('lodash');
 const Args = require('./args');
 const Spotify = require('./spotify');
 const Youtube = require('./youtube');
@@ -23,7 +23,7 @@ Cache.load();
 
         const basicTracks = tracks.map(Spotify.toBasicTrack);
         const ytQueryObjects = basicTracks.map(Youtube.toQueryObject);
-        const ytQueryChunks = __.chunk(ytQueryObjects, args.chunkSize);
+        const ytQueryChunks = _.chunk(ytQueryObjects, args.chunkSize);
         // TODO: should probably implement shitty caching first
         // probably just write to file with json parsing
         // { spotifyId, ytId }
