@@ -4,15 +4,39 @@ const Args = require('./args');
 const MAX = 10;
 const MIN = 4;
 
-const scoreFuncs = [
-  (target, source) => __.includesIgnoreCase(target.title, source.title) ? 1 : 0,
-  (target, source) => __.includesIgnoreCase(target.title, source.artists[0]) ? 1 : 0,
-  (target, source) => __.includesIgnoreCase(target.title, 'official') ? 1 : 0,
-  (target, source) => __.includesIgnoreCase(target.channel, source.artists[0]) ? 1 : 0,
-  (target, source) => __.includesIgnoreCase(target.channel, source.artists[0].replace(/\s/g, '')) ? 1 : 0,
-  (target, source) => __.equalsIgnoreCase(target.channel, source.artists[0]) ? 2 : 0,
-  (target, source) => __.includesIgnoreCase(target.channel, 'vevo') ? 2 : 0,
-  (target, source) => __.equalsIgnoreCase(target.channel, 'vevo') ? 2 : 0,
+const scoreObjs = [
+  {
+    func: (target, source) => __.includesIgnoreCase(target.title, source.title),
+    weight: 1
+  },
+  {
+    func: (target, source) => __.includesIgnoreCase(target.title, source.artists[0]),
+    weight: 1
+  },
+  {
+    func: (target, source) => __.includesIgnoreCase(target.title, 'official'),
+    weight: 1
+  },
+  {
+    func: (target, source) => __.includesIgnoreCase(target.channel, source.artists[0]),
+    weight: 1
+  },
+  {
+    func: (target, source) => __.includesIgnoreCase(target.channel, source.artists[0].replace(/\s/g, '')),
+    weight: 1
+  },
+  {
+    func: (target, source) => __.equalsIgnoreCase(target.channel, source.artists[0]),
+    weight: 2
+  },
+  {
+    func: (target, source) => __.includesIgnoreCase(target.channel, 'vevo'),
+    weight: 2
+  },
+  {
+    func: (target, source) => __.equalsIgnoreCase(target.channel, 'vevo'),
+    weight: 2
+  }
 ];
 
 const isShittyFuncs = [
@@ -35,8 +59,8 @@ function calculate(youtubeResult, queryObj) {
     return 0;
   }
 
-  const score = scoreFuncs.reduce((acc, curr) => {
-    return acc + curr(youtubeResult, queryObj);
+  const score = scoreObjs.reduce((acc, curr) => {
+    return acc + (curr.func(youtubeResult, queryObj) ? curr.weight : 0);
   }, 0);
 
   if (Args.get().debugScore) {
