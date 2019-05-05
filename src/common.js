@@ -1,7 +1,7 @@
 // basic utility functions
 
-function stripSpecialChars(str) {
-  return str.replace(/[^\w\s]/gi, '');
+function replaceSpecialChars(str, replace = '') {
+  return str.replace(/[^\w\s]/gi, replace);
 }
 
 function includesIgnoreCase(str, needle) {
@@ -23,7 +23,7 @@ function appendParamsToURL(url, params){
 }
 
 module.exports = {
-  stripSpecialChars,
+  replaceSpecialChars,
   includesIgnoreCase,
   equalsIgnoreCase,
   appendParamsToURL

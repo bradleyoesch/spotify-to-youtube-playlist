@@ -4,6 +4,7 @@ const Args = require('./args');
 const filepath = './src/resources/cache/';
 const cacheNames = [ 'youtube', 'spotify' ];
 const _CACHE = {};
+let hits = 0;
 
 function load() {
   // TODO: what if no files?
@@ -39,6 +40,10 @@ function setIn(path, value) {
   cache[key] = value;
 }
 
+function increment() {
+  hits = hits + 1;
+}
+
 // {
 //   youtube: {
 //     search: {
@@ -49,7 +54,10 @@ function setIn(path, value) {
 //   }
 // }
 
-function print() {
+function print(what) {
+  if (what === 'hits') {
+    console.log('hits: ' + hits);
+  }
   Args.get().debug && console.log(`Cache:\n${JSON.stringify(_CACHE, undefined, 2)}`);
 }
 
@@ -58,5 +66,6 @@ module.exports = {
   write,
   getIn,
   setIn,
-  print
+  print,
+  increment
 };

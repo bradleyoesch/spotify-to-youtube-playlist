@@ -33,8 +33,10 @@ Cache.load();
             .then((bestYtIds) => {
               console.log('bestYtIds');
               console.log(bestYtIds);
+              console.log('bestYtIds.length: ' + bestYtIds.length);
               Cache.write();
-            })
+              Cache.print('hits');
+            });
         }
       })
       .catch((playlistErr) => {

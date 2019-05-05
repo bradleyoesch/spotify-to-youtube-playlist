@@ -29,6 +29,7 @@ function _searchVideos(query) {
   const videoSearchOpts = _getOptions(params);
   const hit = Cache.getIn(['youtube', 'search', 'video', query]);
   if (hit) {
+    Cache.increment();
     Args.get().debug && console.log(`Hit on query: ${query}`);
     return Promise.resolve(hit);
   }
@@ -38,8 +39,16 @@ function _searchVideos(query) {
       return response;
     })
     .catch((e) => {
-      console.error('_searchVideos() error\n', e)
-    });
+      const errors = ((e.error || {}).error || {}).errors || [];
+      const quotaLimitExceeded = errors.some((err) => ['youtube.quota', 'usageLimits'].indexOf(err.domain) !== -1)
+          && errors.some((err) => ['quotaExceeded', 'dailyLimitExceeded'].indexOf(err.reason) !== -1);
+      if (quotaLimitExceeded) {
+        console.error(e.message);
+      } else {
+        console.error('_searchVideos() error\n', e);
+      }
+    })
+    .then((failedResp) => { return { items: [] }; });
 }
 
 /*
@@ -56,11 +65,11 @@ function _searchVideos(query) {
 const _toBestVideo = (queryObj) => (acc, curr, idx, arr) => {
   try {
     const id = curr.id.videoId;
-    const title = Common.stripSpecialChars(_.unescape(curr.snippet.title));
+    const title = Common.replaceSpecialChars(_.unescape(curr.snippet.title), ' ');
     if (curr.id.kind !== 'youtube#video') {
       return acc;
     }
-    const channel = Common.stripSpecialChars(curr.snippet.channelTitle);
+    const channel = Common.replaceSpecialChars(curr.snippet.channelTitle, ' ');
     const rawScore = Score.calculate({ title, channel }, queryObj);
 
     if (rawScore < Score.MIN) {
@@ -97,8 +106,8 @@ async function _doChunkedSearchVideos(queryObjChunk) {
 }
 
 function toQueryObject(track) {
-  const title = Common.stripSpecialChars(track.title.trim().toLowerCase());
-  const artists = track.artists.map((a) => Common.stripSpecialChars(a.trim().toLowerCase()));
+  const title = Common.replaceSpecialChars(track.title.trim().toLowerCase(), ' ');
+  const artists = track.artists.map((a) => Common.replaceSpecialChars(a.trim().toLowerCase(), ' '));
   return {
     title,
     artists,

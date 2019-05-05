@@ -1,4 +1,5 @@
 const rp = require('request-promise');
+const _ = require('lodash');
 const Secrets = require('./secrets');
 const Args = require('./args');
 const Common = require('./common');
@@ -7,6 +8,8 @@ const { Spotify } = Secrets;
 // your application requests authorization
 // const BASIC_AUTH = Buffer.from(`${Spotify.CLIENT_ID}:${Spotify.CLIENT_SECRET}`, 'base64');
 const BASIC_AUTH = new Buffer(`${Spotify.CLIENT_ID}:${Spotify.CLIENT_SECRET}`).toString('base64');
+// spotify's native limit
+const LIMIT = 100;
 const Regex = {
   PLAYLIST_ID: /<playlistId>/gi
 }
@@ -52,24 +55,44 @@ function authenticate() {
     });
 }
 
+/**
+ * Generate array of limits given the limit and the spotify LIMIT
+ * e.g. limits(280), LIMIT = 100 -> [100, 100, 80]
+ */
+function _limits(limit) {
+  return _.range(0, Math.ceil(limit / LIMIT)).map((val, idx) => {
+    return Math.min(LIMIT, limit - (LIMIT * idx));
+  });
+}
+
+/**
+ * Get the playlist tracks
+ * if the limit is larger than spotify's, make multiple requests
+ * then combine them all together
+ */
 function getPlaylistTracks(token, playlistId) {
   const args = Args.get();
-  // TODO: offset changes per call
-  const urlParams = {
-    limit: args.limit,
-    offset: args.offset,
-    fields: 'items(track(name, artists))'
-  };
-  const opts = Object.assign({}, Options.PLAYLIST);
-  opts.headers.Authorization = `Bearer ${token}`;
-  opts.url = Common.appendParamsToURL(opts.url.replace(Regex.PLAYLIST_ID, playlistId), urlParams);
-  return rp(opts)
-    .then((response) => {
-      return response.items.map((item) => item.track);
-    })
-    .catch((e) => {
-      console.error('getPlaylistTracks() error\n', e)
-    });
+  const limits = _limits(args.limit);
+  // reduce?
+  const trackPromises = limits.map((limit, idx) => {
+    const urlParams = {
+      limit,
+      offset: limits[idx - 1] || 0,
+      fields: 'items(track(name, artists))'
+    };
+    const opts = Object.assign({}, Options.PLAYLIST);
+    opts.headers.Authorization = `Bearer ${token}`;
+    opts.url = Common.appendParamsToURL(opts.url.replace(Regex.PLAYLIST_ID, playlistId), urlParams);
+    return rp(opts)
+      .then((response) => {
+        return response.items.map((item) => item.track);
+      })
+      .catch((e) => {
+        console.error('getPlaylistTracks() error\n', e)
+      });
+  });
+  return Promise.all(trackPromises)
+    .then((tracks) => tracks.reduce((acc, curr) => acc.concat(curr), []));
 }
 
 function toBasicTrack(track) {

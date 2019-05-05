@@ -41,9 +41,10 @@ const scoreObjs = [
 
 const isShittyFuncs = [
   // if yt has it but not the actual song, it's likely a shitty upload
-  (target, source) => Common.includesIgnoreCase(target.title, 'lyrics') && !Common.includesIgnoreCase(source.title, 'lyrics'),
-  (target, source) => Common.includesIgnoreCase(target.title, 'high quality') && !Common.includesIgnoreCase(source.title, 'high quality'),
-  (target, source) => Common.includesIgnoreCase(target.title, 'album version') && !Common.includesIgnoreCase(source.title, 'album version'),
+  (target, source) => Common.includesIgnoreCase(target.title, 'audio') && !(Common.includesIgnoreCase(source.title, 'audio') || Common.includesIgnoreCase(source.artists[0], 'audio')),
+  (target, source) => Common.includesIgnoreCase(target.title, 'lyrics') && !(Common.includesIgnoreCase(source.title, 'lyrics') || Common.includesIgnoreCase(source.artists[0], 'lyrics')),
+  (target, source) => Common.includesIgnoreCase(target.title, 'high quality') && !(Common.includesIgnoreCase(source.title, 'high quality') || Common.includesIgnoreCase(source.artists[0], 'high quality')),
+  (target, source) => Common.includesIgnoreCase(target.title, 'album version') && !(Common.includesIgnoreCase(source.title, 'album version') || Common.includesIgnoreCase(source.artists[0], 'album version')),
 ];
 
 /**
