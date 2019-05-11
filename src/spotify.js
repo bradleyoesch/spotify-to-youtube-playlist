@@ -5,10 +5,7 @@ const Args = require('./args');
 const Common = require('./common');
 const { Spotify } = Secrets;
 
-// your application requests authorization
-// const SECRETS = `${Spotify.CLIENT_ID}:${Spotify.CLIENT_SECRET}`;
-// const BASIC_AUTH = new Buffer(`${Spotify.CLIENT_ID}:${Spotify.CLIENT_SECRET}`).toString('base64');
-const BASIC_AUTH = Buffer.from(`${Spotify.CLIENT_ID}:${Spotify.CLIENT_SECRET}`, 'utf8').toString('base64');
+const BASIC_CREDENTIALS = Buffer.from(`${Spotify.CLIENT_ID}:${Spotify.CLIENT_SECRET}`, 'utf8').toString('base64');
 // spotify's native limit
 const LIMIT = 100;
 const Regex = {
@@ -21,7 +18,7 @@ const Options = {
   AUTH:{
     method: 'POST',
     url: 'https://accounts.spotify.com/api/token',
-    headers: { 'Authorization': `Basic ${BASIC_AUTH}` },
+    headers: { 'Authorization': `Basic ${BASIC_CREDENTIALS}` },
     form: { grant_type: 'client_credentials' },
     json: true
   },
