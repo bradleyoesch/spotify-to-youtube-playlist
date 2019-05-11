@@ -58,7 +58,7 @@ function print(what) {
   if (what === 'hits') {
     console.log('hits: ' + hits);
   }
-  Args.get().debug && console.log(`Cache:\n${JSON.stringify(_CACHE, undefined, 2)}`);
+  Args.get().printCache && console.log(`Cache:\n${JSON.stringify(_CACHE, undefined, 2)}`);
 }
 
 module.exports = {

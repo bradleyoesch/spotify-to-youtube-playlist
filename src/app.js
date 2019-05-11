@@ -15,20 +15,19 @@ if (!playlistId) {
 
 Cache.load();
 
+// authenticate with spotify
 !args.skipApi && Spotify.authenticate()
   .then((token) => {
-
+    // use that autheticated token to get tracks for the given playlist
     Spotify.getPlaylistTracks(token, playlistId)
       .then((tracks) => {
-
         const basicTracks = tracks.map(Spotify.toBasicTrack);
-        const ytQueryObjects = basicTracks.map(Youtube.toQueryObject);
-        const ytQueryChunks = _.chunk(ytQueryObjects, args.chunkSize);
-        // TODO: should probably implement shitty caching first
-        // probably just write to file with json parsing
-        // { spotifyId, ytId }
+        args.debugSpotify && console.log(basicTracks, basicTracks.length);
 
         if (!args.skipYoutube) {
+          // convert the tracks to youtube queries to find the best videos
+          const ytQueryObjects = basicTracks.map(Youtube.toQueryObject);
+          const ytQueryChunks = _.chunk(ytQueryObjects, args.chunkSize);
           Youtube.getBestIdsFromQueryChunks(ytQueryChunks)
             .then((bestYtIds) => {
               console.log('bestYtIds');

@@ -1,4 +1,7 @@
+const _ = require('lodash');
+
 let _args = {};
+const INT_ARGS = ['limit', 'offset', 'chunkSize'];
 
 const DEFAULT_ARGS = {
   limit: 5,
@@ -34,11 +37,11 @@ function _parse() {
 
 function set() {
   _args = Object.assign(DEFAULT_ARGS, _parse());
+  INT_ARGS.forEach((arg) => _args[arg] = Math.max(0, _args[arg]));
 }
 
-// I know it's not technically private or immutable but I like calling it this way so I'm keeping it
 function get() {
-  return _args;
+  return _.cloneDeep(_args);
 }
 
 module.exports = {

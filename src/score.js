@@ -4,6 +4,11 @@ const Args = require('./args');
 const MAX = 10;
 const MIN = 5;
 
+// TODO: I think all special chars are gone, including parenth and periods
+function stripFeaturing(str) {
+
+}
+
 const scoreObjs = [
   {
     func: (target, source) => Common.includesIgnoreCase(target.title, source.title),

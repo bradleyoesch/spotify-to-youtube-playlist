@@ -6,8 +6,9 @@ const Common = require('./common');
 const { Spotify } = Secrets;
 
 // your application requests authorization
-// const BASIC_AUTH = Buffer.from(`${Spotify.CLIENT_ID}:${Spotify.CLIENT_SECRET}`, 'base64');
-const BASIC_AUTH = new Buffer(`${Spotify.CLIENT_ID}:${Spotify.CLIENT_SECRET}`).toString('base64');
+// const SECRETS = `${Spotify.CLIENT_ID}:${Spotify.CLIENT_SECRET}`;
+// const BASIC_AUTH = new Buffer(`${Spotify.CLIENT_ID}:${Spotify.CLIENT_SECRET}`).toString('base64');
+const BASIC_AUTH = Buffer.from(`${Spotify.CLIENT_ID}:${Spotify.CLIENT_SECRET}`, 'utf8').toString('base64');
 // spotify's native limit
 const LIMIT = 100;
 const Regex = {
@@ -65,6 +66,30 @@ function _limits(limit) {
   });
 }
 
+function _getPlaylistOpts(token, playlistId, urlParams = {}) {
+    const opts = Object.assign({}, Options.PLAYLIST);
+    opts.headers.Authorization = `Bearer ${token}`;
+    opts.url = Common.appendParamsToURL(opts.url.replace(Regex.PLAYLIST_ID, playlistId), urlParams);
+    return opts;
+}
+
+/**
+ * Spotify will return tracks forever, the offset overflows
+ * e.g. playlist has 6 tracks and my limit is 5, if I call to it 3 times,
+ * I get [0,1,2,3,4], [5,6,0,1,2], [3,4,5,6,0]
+ */
+function _getPlayListTotalTracks(token, playlistId) {
+    const urlParams = { fields: 'total' };
+    const opts = _getPlaylistOpts(token, playlistId, urlParams);
+    return rp(opts)
+      .then((response) => {
+        return response.total;
+      })
+      .catch((e) => {
+        console.error('_getPlayListTotalTracks() error\n', e)
+      });
+}
+
 /**
  * Get the playlist tracks
  * if the limit is larger than spotify's, make multiple requests
@@ -72,27 +97,27 @@ function _limits(limit) {
  */
 function getPlaylistTracks(token, playlistId) {
   const args = Args.get();
-  const limits = _limits(args.limit);
-  // reduce?
-  const trackPromises = limits.map((limit, idx) => {
-    const urlParams = {
-      limit,
-      offset: limits[idx - 1] || 0,
-      fields: 'items(track(name, artists))'
-    };
-    const opts = Object.assign({}, Options.PLAYLIST);
-    opts.headers.Authorization = `Bearer ${token}`;
-    opts.url = Common.appendParamsToURL(opts.url.replace(Regex.PLAYLIST_ID, playlistId), urlParams);
-    return rp(opts)
-      .then((response) => {
-        return response.items.map((item) => item.track);
-      })
-      .catch((e) => {
-        console.error('getPlaylistTracks() error\n', e)
+  return _getPlayListTotalTracks(token, playlistId)
+    .then((total) => {
+      const limits = _limits(Math.min(args.limit, Math.max(0, total - args.offset)));
+      const trackPromises = limits.map((limit, idx) => {
+        const urlParams = {
+          limit,
+          offset: args.offset + _.sum(limits.slice(0, idx)),
+          fields: 'items(track(name, artists))'
+        };
+        const opts = _getPlaylistOpts(token, playlistId, urlParams);
+        return rp(opts)
+          .then((response) => {
+            return response.items.map((item) => item.track);
+          })
+          .catch((e) => {
+            console.error('getPlaylistTracks() error\n', e)
+          });
       });
-  });
-  return Promise.all(trackPromises)
-    .then((tracks) => tracks.reduce((acc, curr) => acc.concat(curr), []));
+      return Promise.all(trackPromises)
+        .then((tracks) => tracks.reduce((acc, curr) => acc.concat(curr), []));
+    });
 }
 
 function toBasicTrack(track) {
