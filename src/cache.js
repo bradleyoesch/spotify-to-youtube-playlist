@@ -7,15 +7,21 @@ const _CACHE = {};
 let hits = 0;
 
 function load() {
-  // TODO: what if no files?
   cacheNames.forEach((name) => {
-    const cache = fs.readFileSync(`${filepath}${name}.json`).toString() || '{}';
-    _CACHE[name] = JSON.parse(cache);
+    try {
+      const cache = fs.readFileSync(`${filepath}${name}.json`).toString() || '{}';
+      _CACHE[name] = JSON.parse(cache);
+    } catch (err) {
+      if (err.code === 'ENOENT') {
+        _CACHE[name] = {};
+      } else {
+        throw new Error(err);
+      }
+    }
   });
 }
 
 function write() {
-  // TODO: what if no files?
   cacheNames.forEach((name) => {
     fs.writeFileSync(`${filepath}${name}.json`, JSON.stringify(_CACHE[name] || {}));
   });
