@@ -27,8 +27,7 @@ Cache.load();
         if (!args.skipYoutube) {
           // convert the tracks to youtube queries to find the best videos
           const ytQueryObjects = basicTracks.map(Youtube.toQueryObject);
-          const ytQueryChunks = _.chunk(ytQueryObjects, args.chunkSize);
-          Youtube.getBestIdsFromQueryChunks(ytQueryChunks)
+          Youtube.getBestIdsFromQueries(ytQueryObjects)
             .then((bestYtIds) => {
               console.log('bestYtIds');
               console.log(bestYtIds);
