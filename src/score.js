@@ -28,7 +28,7 @@ const scoreObjs = [
   },
   {
     func: (target, source) => Common.includesIgnoreCase(target.channel, source.artists[0].replace(/\s/g, '')),
-    weight: 1
+    weight: 2
   },
   {
     func: (target, source) => Common.equalsIgnoreCase(target.channel, source.artists[0]),
