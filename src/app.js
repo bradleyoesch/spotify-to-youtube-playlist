@@ -20,7 +20,7 @@ Cache.load();
   .then((token) => {
     // use that autheticated token to get tracks for the given playlist
     Spotify.getPlaylistTracks(token, playlistId)
-      .then((tracks) => {
+      .then(({ title, tracks }) => {
         const basicTracks = tracks.map(Spotify.toBasicTrack);
         args.debugSpotify && console.log(basicTracks, basicTracks.length);
 
@@ -34,6 +34,11 @@ Cache.load();
               console.log('bestYtIds.length: ' + bestYtIds.length);
               Cache.write();
               Cache.print('hits');
+              args.upsertPlaylist && Youtube.upsertPlaylist(playlistId, title, bestYtIds)
+                .then((response) => {
+                  console.log('upsertPlaylist response');
+                  console.log(response);
+                })
             });
         }
       })

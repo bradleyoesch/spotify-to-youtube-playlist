@@ -14,15 +14,15 @@ const RESULT_LIMIT = 3;
 const Urls = {
   BASE_SEARCH: 'https://www.googleapis.com/youtube/v3/search?part=snippet'
 };
-const BASE_OPTIONS = {
+const BASE_SEARCH_OPTIONS = {
   method: 'GET',
   url: Urls.BASE_SEARCH,
   headers: { 'Accept': 'application/json' },
   json: true
 };
 
-function _getOptions(params) {
-  const opts = Object.assign({}, BASE_OPTIONS);
+function _getSearchOptions(params) {
+  const opts = Object.assign({}, BASE_SEARCH_OPTIONS);
   opts.url = `${opts.url}${params}&key=${Youtube.API_KEY}`;
   return opts;
 }
@@ -35,7 +35,7 @@ function _searchVideos(query) {
     return Promise.resolve(hit);
   }
   const params = `&type=video&maxResults=${RESULT_LIMIT}&q=${query}`;
-  const videoSearchOpts = _getOptions(params);
+  const videoSearchOpts = _getSearchOptions(params);
   return rp(videoSearchOpts)
     .then((response) => {
       Cache.setIn(['youtube', 'search', 'video', query], response);
@@ -152,7 +152,13 @@ function getBestIdsFromQueries(queryObjects) {
     });
 }
 
+function upsertPlaylist(playlistId, playlistTitle, bestYtIds) {
+  console.log(playlistId, playlistTitle, bestYtIds[0]);
+  return Promise.resolve('success');
+}
+
 module.exports = {
   toQueryObject,
-  getBestIdsFromQueries
+  getBestIdsFromQueries,
+  upsertPlaylist
 };

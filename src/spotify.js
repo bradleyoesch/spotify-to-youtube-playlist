@@ -9,10 +9,11 @@ const BASIC_CREDENTIALS = Buffer.from(`${Spotify.CLIENT_ID}:${Spotify.CLIENT_SEC
 // spotify's native limit
 const LIMIT = 100;
 const Regex = {
-  PLAYLIST_ID: /<playlistId>/gi
+  PLAYLIST_ID: /\{playlistId\}/gi
 }
 const Urls = {
-  GET_PLAYLIST_TRACKS: 'https://api.spotify.com/v1/playlists/<playlistId>/tracks'
+  GET_PLAYLIST: 'https://api.spotify.com/v1/playlists/{playlistId}',
+  GET_PLAYLIST_TRACKS: 'https://api.spotify.com/v1/playlists/{playlistId}/tracks',
 };
 const Options = {
   AUTH:{
@@ -25,7 +26,7 @@ const Options = {
   PLAYLIST: {
     // url: 'https://api.spotify.com/v1/users/1258023236/playlists',
     method: 'GET',
-    url: Urls.GET_PLAYLIST_TRACKS,
+    url: Urls.GET_PLAYLIST,
     headers: { 'Authorization': 'Invalid token' },
     json: true
   }
@@ -75,15 +76,15 @@ function _getPlaylistOpts(token, playlistId, urlParams = {}) {
  * e.g. playlist has 6 tracks and my limit is 5, if I call to it 3 times,
  * I get [0,1,2,3,4], [5,6,0,1,2], [3,4,5,6,0]
  */
-function _getPlayListTotalTracks(token, playlistId) {
-    const urlParams = { fields: 'total' };
+function _getPlaylistMeta(token, playlistId) {
+    const urlParams = { fields: 'name,tracks(total)' };
     const opts = _getPlaylistOpts(token, playlistId, urlParams);
     return rp(opts)
       .then((response) => {
-        return response.total;
+        return { title: response.name, total: response.tracks.total };
       })
       .catch((e) => {
-        console.error('_getPlayListTotalTracks() error\n', e)
+        console.error('_getPlaylistMeta() error\n', e)
       });
 }
 
@@ -94,26 +95,28 @@ function _getPlayListTotalTracks(token, playlistId) {
  */
 function getPlaylistTracks(token, playlistId) {
   const args = Args.get();
-  return _getPlayListTotalTracks(token, playlistId)
-    .then((total) => {
+  return _getPlaylistMeta(token, playlistId)
+    .then(({ title, total }) => {
       const limits = _limits(Math.min(args.limit, Math.max(0, total - args.offset)));
       const trackPromises = limits.map((limit, idx) => {
         const urlParams = {
           limit,
           offset: args.offset + _.sum(limits.slice(0, idx)),
-          fields: 'items(track(name, artists))'
+          fields: 'tracks(items(track(name, artists)))'
         };
         const opts = _getPlaylistOpts(token, playlistId, urlParams);
         return rp(opts)
           .then((response) => {
-            return response.items.map((item) => item.track);
+            return response.tracks.items.map((item) => item.track);
           })
           .catch((e) => {
             console.error('getPlaylistTracks() error\n', e)
           });
       });
       return Promise.all(trackPromises)
-        .then((tracks) => tracks.reduce((acc, curr) => acc.concat(curr), []));
+        .then((tracks) => {
+          return { title, tracks: tracks.reduce((acc, curr) => acc.concat(curr), []) };
+        });
     });
 }
 
