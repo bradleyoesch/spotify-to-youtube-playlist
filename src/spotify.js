@@ -12,21 +12,27 @@ const Regex = {
   PLAYLIST_ID: /\{playlistId\}/gi
 }
 const Urls = {
+  AUTHENTICATE: 'https://accounts.spotify.com/api/token',
   GET_PLAYLIST: 'https://api.spotify.com/v1/playlists/{playlistId}',
   GET_PLAYLIST_TRACKS: 'https://api.spotify.com/v1/playlists/{playlistId}/tracks',
 };
 const Options = {
   AUTH:{
     method: 'POST',
-    url: 'https://accounts.spotify.com/api/token',
+    url: Urls.AUTHENTICATE,
     headers: { 'Authorization': `Basic ${BASIC_CREDENTIALS}` },
     form: { grant_type: 'client_credentials' },
     json: true
   },
   PLAYLIST: {
-    // url: 'https://api.spotify.com/v1/users/1258023236/playlists',
     method: 'GET',
     url: Urls.GET_PLAYLIST,
+    headers: { 'Authorization': 'Invalid token' },
+    json: true
+  },
+  PLAYLIST_TRACKS: {
+    method: 'GET',
+    url: Urls.GET_PLAYLIST_TRACKS,
     headers: { 'Authorization': 'Invalid token' },
     json: true
   }
@@ -71,6 +77,13 @@ function _getPlaylistOpts(token, playlistId, urlParams = {}) {
     return opts;
 }
 
+function _getPlaylistTrackOpts(token, playlistId, urlParams = {}) {
+    const opts = Object.assign({}, Options.PLAYLIST_TRACKS);
+    opts.headers.Authorization = `Bearer ${token}`;
+    opts.url = Common.appendParamsToURL(opts.url.replace(Regex.PLAYLIST_ID, playlistId), urlParams);
+    return opts;
+}
+
 /**
  * Spotify will return tracks forever, the offset overflows
  * e.g. playlist has 6 tracks and my limit is 5, if I call to it 3 times,
@@ -102,12 +115,12 @@ function getPlaylistTracks(token, playlistId) {
         const urlParams = {
           limit,
           offset: args.offset + _.sum(limits.slice(0, idx)),
-          fields: 'tracks(items(track(name, artists)))'
+          fields: 'items(track(name, artists))'
         };
-        const opts = _getPlaylistOpts(token, playlistId, urlParams);
+        const opts = _getPlaylistTrackOpts(token, playlistId, urlParams);
         return rp(opts)
           .then((response) => {
-            return response.tracks.items.map((item) => item.track);
+            return response.items.map((item) => item.track);
           })
           .catch((e) => {
             console.error('getPlaylistTracks() error\n', e)
