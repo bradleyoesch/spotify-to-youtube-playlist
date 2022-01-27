@@ -22,13 +22,19 @@ You will need to register your Spotify app and get your own credentials from the
 
 To do so, go to [your Spotify for Developers Dashboard](https://beta.developer.spotify.com/dashboard) and create your application.
 
-You will also need to register your Youtube app and get your own credentials from Google Apis.
+You will also need to register your Youtube app, get your own credentials from Google Apis, and register your OAuth credentials.
 
 To do so, go to [Youtube's Getting Started page](https://developers.google.com/youtube/v3/getting-started) and follow the instructions to get a YouTube Data API v3 API key.
 
-Once you have created your apps, copy the secrets file to an actual secrets file and update your secrets.
+Once you have created your apps, copy the backup secrets file to an actual secrets file and update your secrets. Do not commit this file! It is already included in the .gitignore.
 
     $ cp src/secrets.js.bak src/secrets.js
+
+Then for your YouTube OAuth credientials, visit [Create authorization credentials](https://developers.google.com/youtube/v3/guides/auth/server-side-web-apps) and follow the instructions to get YouTube OAuth 2.0 ids. Run `authenticate.js` to get the url to visit to give the application access to be able to create and update playlists.
+
+    $ node src/authenticate.js
+
+Visit the url printed, give the application access, and when redirected, copy the code value in the url to `src/secrets.js`
 
 ## Running the code
 Run via node with some arguments.
