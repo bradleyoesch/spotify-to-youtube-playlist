@@ -11,18 +11,81 @@ const yes = [];
 const no = [];
 
 const RESULT_LIMIT = 3;
-const Urls = {
-  BASE_SEARCH: 'https://www.googleapis.com/youtube/v3/search?part=snippet'
+// e.g.
+// '''
+//   https://accounts.google.com/o/oauth2/v2/auth?
+//   scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fyoutube.readonly&
+//   access_type=offline&
+//   include_granted_scopes=true&
+//   state=state_parameter_passthrough_value&
+//   redirect_uri=http%3A%2F%2Flocalhost%2Foauth2callback&
+//   response_type=code&
+//   client_id=client_id
+// '''
+// '''
+//   http://localhost/oauth2callback?state=state_parameter_passthrough_value
+//   &code=4/awGnzqkGFgJPCHTrx7RSR_4jxMBy9rjy7DQ5d5qJjrKugRp3Yn1vAHSnlaSk4tRwzpYPOjTA-T49EDC9mFtwNfs
+//   &scope=https://www.googleapis.com/auth/drive.metadata.readonly
+// '''
+const Params = {
+  OAUTH: {
+    scope: 'https://www.googleapis.com/auth/youtube.force-ssl',
+    access_type: 'offline',
+    include_granted_scopes: true,
+    redirect_uri: 'http://localhost',
+    response_type: 'code',
+    client_id: Youtube.OAuth.CLIENT_ID
+  },
+  TOKEN: {
+    code: Youtube.OAuth.CODE,
+    client_id: Youtube.OAuth.CLIENT_ID,
+    client_secret: Youtube.OAuth.CLIENT_SECRET,
+    redirect_uri: 'http://localhost',
+    grant_type: 'authorization_code',
+  }
 };
-const BASE_SEARCH_OPTIONS = {
-  method: 'GET',
-  url: Urls.BASE_SEARCH,
-  headers: { 'Accept': 'application/json' },
-  json: true
+const Urls = {
+  AUTHENTICATE: Common.appendParamsToURL('https://accounts.google.com/o/oauth2/v2/auth', Params.OAUTH),
+  TOKEN: Common.appendParamsToURL('https://www.googleapis.com/oauth2/v4/token', Params.TOKEN),
+  SEARCH: 'https://www.googleapis.com/youtube/v3/search?part=snippet',
+  // TODO: are these correct?
+  PLAYLIST_LIST: 'https://www.googleapis.com/youtube/v3/playlists?part=snippet',
+  PLAYLIST_INSERT: 'https://www.googleapis.com/youtube/v3/playlists?part=snippet,status',
+  PLAYLIST_ITEM_INSERT: 'https://www.googleapis.com/youtube/v3/playlistItems',
+};
+const Options = {
+  SEARCH: {
+    method: 'GET',
+    url: Urls.SEARCH,
+    headers: { Accept: 'application/json' },
+    json: true
+  },
+  PLAYLIST_LIST: {
+    method: 'GET',
+    url: Urls.PLAYLIST_LIST,
+    headers: { Accept: 'application/json' },
+    json: true
+  },
+  PLAYLIST_INSERT: {
+    method: 'POST',
+    url: Urls.PLAYLIST_INSERT,
+    headers: { Authorization: 'Invalid token' },
+    json: true
+  },
+  PLAYLIST_ITEM_INSERT: {
+    method: 'POST',
+    url: Urls.PLAYLIST_ITEM_INSERT,
+    headers: { Authorization: 'Invalid token' },
+    json: true
+  },
 };
 
-function _getSearchOptions(params) {
-  const opts = Object.assign({}, BASE_SEARCH_OPTIONS);
+function getOAuthUrl() {
+  return Urls.AUTHENTICATE;
+}
+
+function _getOptions(options, params = '') {
+  const opts = Object.assign({}, options);
   opts.url = `${opts.url}${params}&key=${Youtube.API_KEY}`;
   return opts;
 }
@@ -35,7 +98,7 @@ function _searchVideos(query) {
     return Promise.resolve(hit);
   }
   const params = `&type=video&maxResults=${RESULT_LIMIT}&q=${query}`;
-  const videoSearchOpts = _getSearchOptions(params);
+  const videoSearchOpts = _getOptions(Options.SEARCH, params);
   return rp(videoSearchOpts)
     .then((response) => {
       Cache.setIn(['youtube', 'search', 'video', query], response);
@@ -97,7 +160,7 @@ async function _doChunkedSearchVideos(queryObjChunk) {
             yes.push(queryObj.query);
           }
         }
-        return bestVideo
+        return bestVideo;
       })
       .catch((e) => {
         console.error('_doChunkedSearchVideos() error\n', e)
@@ -152,13 +215,95 @@ function getBestIdsFromQueries(queryObjects) {
     });
 }
 
-function upsertPlaylist(playlistId, playlistTitle, bestYtIds) {
-  console.log(playlistId, playlistTitle, bestYtIds[0]);
-  return Promise.resolve('success');
+function _getTag(spotifyPlaylistId) {
+  return `spotifyPlaylistId-${spotifyPlaylistId}`;
 }
 
+function getMatchingPlaylists(channelId, spotifyPlaylistId) {
+  const args = Args.get();
+  if (!args.upsertPlaylist) {
+    return Promise.resolve([]);
+  }
+  const playlistTag = _getTag(spotifyPlaylistId);
+  const params = `&channelId=${channelId}&maxResults=50`;
+  const playlistListOpts = _getOptions(Options.PLAYLIST_LIST, params);
+  return rp(playlistListOpts)
+    .then((response) => {
+      // TODO: gonna have to deal with paging through these ugh
+      return response.items.filter((item) => {
+        return _.includes(item.snippet.tags || [], playlistTag);
+      });
+    })
+    .catch((e) => {
+      console.error('getMatchingPlaylists() error\n', e)
+    });
+}
+
+function _createInsertPlaylistData(spotifyPlaylistId, playlistTitle) {
+  return _.cloneDeep({
+    part: 'snippet,status',
+    resource: {
+      snippet: {
+        title: playlistTitle,
+        description: `${playlistTitle} - playlist of music videos from the spotify playlist\nhttps://open.spotify.com/playlist/${spotifyPlaylistId}\n\nhttps://github.com/bradleyoesch/spotify-to-youtube-playlist`,
+        tags: [
+          'spotify-to-youtube-playlist',
+          _getTag(spotifyPlaylistId)
+        ],
+        defaultLanguage: 'en'
+      },
+      status: {
+        privacyStatus: 'public'
+      }
+    }
+  });
+}
+
+function _updatePlaylist(insertedPlaylistId, ytIds) {
+    // TODO
+  const opts = Object.assign(Options.PLAYLIST_ITEM_INSERT,)
+  const token = 'foo';
+  opts.headers.Authorization = `Bearer ${token}`;
+  const playlistUpdateOpts = _getOptions(opts);
+}
+
+function upsertPlaylist(channelId, ytPlaylistId, spotifyPlaylistId, playlistTitle, ytIds) {
+  if (!ytPlaylistId) {
+    // insert/create new playlist
+    const data = _createInsertPlaylistData(spotifyPlaylistId, playlistTitle);
+    const opts = Object.assign(Options.PLAYLIST_INSERT, { data });
+    // TODO
+    const token = 'foo';
+    opts.headers.Authorization = `Bearer ${token}`;
+    const playlistInsertOpts = _getOptions(opts);
+    return rp(playlistInsertOpts)
+      .then((response) => {
+        console.log('insert response')
+        console.log(response)
+        const insertedPlaylistId = response.id;
+        return response;
+      })
+      .catch((e) => {
+        console.error('upsertPlaylist() insert error\n', e)
+      });
+  } else {
+    // update
+  }
+  // console.log(playlistId, playlistTitle, ytIds[0]);
+  // const params = `&channelId=${channelId}&maxResults=50`;
+  // const playlistListOpts = _getOptions(Options.PLAYLIST_LIST, params);
+  // return rp(playlistListOpts)
+  //   .catch((e) => {
+  //     console.error(e);
+  //   });
+}
+
+
+
 module.exports = {
+  getOAuthUrl,
   toQueryObject,
   getBestIdsFromQueries,
-  upsertPlaylist
+  getMatchingPlaylists,
+  upsertPlaylist,
 };

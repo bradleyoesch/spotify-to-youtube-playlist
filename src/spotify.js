@@ -20,20 +20,20 @@ const Options = {
   AUTH:{
     method: 'POST',
     url: Urls.AUTHENTICATE,
-    headers: { 'Authorization': `Basic ${BASIC_CREDENTIALS}` },
+    headers: { Authorization: `Basic ${BASIC_CREDENTIALS}` },
     form: { grant_type: 'client_credentials' },
     json: true
   },
   PLAYLIST: {
     method: 'GET',
     url: Urls.GET_PLAYLIST,
-    headers: { 'Authorization': 'Invalid token' },
+    headers: { Authorization: 'Invalid token' },
     json: true
   },
   PLAYLIST_TRACKS: {
     method: 'GET',
     url: Urls.GET_PLAYLIST_TRACKS,
-    headers: { 'Authorization': 'Invalid token' },
+    headers: { Authorization: 'Invalid token' },
     json: true
   }
 };
@@ -53,7 +53,7 @@ function getPlaylistIdFromUrl(url) {
 function authenticate() {
   return rp(Options.AUTH)
     .then((response) => {
-      return response.access_token
+      return response.access_token;
     })
     .catch((e) => {
       console.error('authenticate() error\n', e)

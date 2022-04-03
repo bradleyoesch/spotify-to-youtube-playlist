@@ -1,0 +1,27 @@
+TODO
+- have almost got the yt auth done
+-- have a way to get token, not sure of the best way to code it yet
+-- write tokens to file? try to get something and if it fails then get another one?
+-- for now, probably just make the call each time, who cares, don't save token anywhere yet
+
+
+- caching spotify calls
+- printing out all best vid titles to figure out scoring
+
+no church in the wild 20 / 40
+kendrick lamar - rigamortus official music video 20 / 60
+kendrick lamar - adhd official music video
+kid cudi - mojo so dope official music video 20 / 80
+mos def - ms fat booty official music video 20 / 80
+4: dGd9DTTrX4U | schoolboy q  hands on the wheel feat aap rocky official video | top dawg entertainment
+run the jewels - blockbuster night part 1 official music video
+biz markie - just a friend official music video
+joey bada - paper trail official music video
+
+
+
+// TDE
+// mass appeal
+// pro era
+// rhino (maybe a list of a ton of record labels?)
+// ft vs feat vs searching whole title with ft

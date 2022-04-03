@@ -60,13 +60,20 @@ function equalsIgnoreCase(str, needle) {
   return str.toLowerCase().trim() === needle.toLowerCase().trim();
 }
 
-function appendParamsToURL(url, params){
-  const paramKeys = Object.keys(params);
-  if (!paramKeys.length) {
+function _getFirstParam(url) {
+  return (url.indexOf('?') === -1) ? '?' : '&';
+}
+
+function _getJoinedParams(params) {
+  return Object.keys(params).map((key) => `${key}=${params[key]}`).join('&');
+}
+
+function appendParamsToURL(url, params) {
+  if (!Object.keys(params).length) {
     return url;
   }
-  const firstParam = (url.split('?')[1]) ? '&' : '?';
-  const joinedParams = paramKeys.map((key) => `${key}=${params[key]}`).join('&');
+  const firstParam = _getFirstParam(url);
+  const joinedParams = _getJoinedParams(params);
   return `${url}${firstParam}${joinedParams}`;
 }
 
